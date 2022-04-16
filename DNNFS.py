@@ -27,6 +27,14 @@ class DNNFS:
             layer.printLayer()
             print("--")
 
+    def normalizeInputs(self, X):
+        m = X.shape[1]
+        average = (1/m) * np.sum(X, axis=1, keepdims=True)
+        variance = np.sqrt((1/m)*np.sum(np.square(X), axis=1, keepdims=True))
+        X_normalized = (X - average)/variance
+        return X_normalized
+
+
     def forwardPropagation(self, X):
         caches = list()
         weights = list()
@@ -78,7 +86,10 @@ class DNNFS:
             db = self.__grads["db" + str(l+1)]
             self.__layers[l].updateLayerWeights(learning_rate, dW, db)
 
-    def train(self, X, Y, learning_rate, num_iterations=2000, lamb=0.1, print_cost_interval=100, print_cost=True):
+    def train(self, X, Y, learning_rate, num_iterations=2000, normalize_inputs=True, lamb=0.1, print_cost_interval=100, print_cost=True):
+
+        if normalize_inputs:
+            X = self.normalizeInputs(X)
 
         costs = []
         for i in range(0, num_iterations):
