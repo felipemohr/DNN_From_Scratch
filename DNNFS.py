@@ -120,19 +120,25 @@ class DNNFS:
             self.__layers[l].updateLayerWeights(learning_rate, dW, db)
 
     def train(self, X, Y, learning_rate, num_epochs=2000, mini_batch_size=64, 
-              optimizer=None, normalize_inputs=True, lamb=0.1,
+              optimizer=None, normalize_inputs=True, lamb=0.1, decay_rate=0.0, 
               print_cost_interval=100, print_cost=True):
 
         if normalize_inputs:
             X = self.normalizeInputs(X)
 
+        if decay_rate != 0:
+            lr0 = learning_rate
+
         seed = 10
         costs = []
-        for i in range(num_epochs):
+        for epoch in range(num_epochs):
 
             seed = seed + 1
             minibatches = self.randomizeMiniBatches(X, Y, mini_batch_size, seed)
             cost_total = 0
+
+            if decay_rate != 0:
+                learning_rate = lr0*np.divide(1, 1 + decay_rate*epoch)
 
             for minibatch in minibatches:
                 (minibatch_X, minibatch_Y) = minibatch
@@ -156,9 +162,9 @@ class DNNFS:
                     minibatch_cost = binary_cross_entropy(AL, minibatch_Y)
                 cost_total += minibatch_cost
 
-            if i % print_cost_interval == 0 or i == num_epochs-1:
+            if epoch % print_cost_interval == 0 or epoch == num_epochs-1:
                 costs.append(cost_total)
                 if print_cost:
-                    print("Cost after iteration {}: {}".format(i, np.squeeze(cost_total)))
+                    print("Cost after iteration {}: {}".format(epoch, np.squeeze(cost_total)))
         
         return costs
