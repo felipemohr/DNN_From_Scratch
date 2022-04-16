@@ -28,6 +28,9 @@ class DNNFS:
             print("Layer " + str(l+1) + ":")
             layer.printLayer()
             print("--")
+        
+    def getLayers(self):
+        return self.__layers
 
     def normalizeInputs(self, X):
         m = X.shape[1]
@@ -117,15 +120,11 @@ class DNNFS:
             self.__layers[l].updateLayerWeights(learning_rate, dW, db)
 
     def train(self, X, Y, learning_rate, num_epochs=2000, mini_batch_size=64, 
-              optimizer="momentum", normalize_inputs=True, lamb=0.1,
+              optimizer=None, normalize_inputs=True, lamb=0.1,
               print_cost_interval=100, print_cost=True):
 
         if normalize_inputs:
             X = self.normalizeInputs(X)
-
-        if optimizer == "momentum":
-            optimizer = Momentum(self.__layers, beta=0.9)
-            optimizer.initializeOptimizerParameters()
 
         seed = 10
         costs = []
@@ -137,12 +136,20 @@ class DNNFS:
 
             for minibatch in minibatches:
                 (minibatch_X, minibatch_Y) = minibatch
+
+                # Forward Propagation
                 AL, caches, weights = self.forwardPropagation(minibatch_X)
+
+                # Backward Propagation
                 grads = self.backwardPropagation(AL, minibatch_Y, caches, lamb)
-                if optimizer == "momentum":
+
+                # Update parameters
+                if optimizer is not None:
                     optimizer.updateParametersWithOptimizer(learning_rate, grads)
                 else:
                     self.updateWeights(learning_rate)
+                
+                # Compute cost
                 if lamb != 0:
                     minibatch_cost = binary_cross_entropy_with_regularization(AL, minibatch_Y, weights, lamb)
                 else:
