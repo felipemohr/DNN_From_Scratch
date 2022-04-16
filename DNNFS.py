@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from dnn_utils.layers import *  
 from dnn_utils.activations import *
@@ -34,6 +35,34 @@ class DNNFS:
         X_normalized = (X - average)/variance
         return X_normalized
 
+    def randomizeMiniBatches(self, X, Y, mini_batch_size=64, seed=0):        
+        np.random.seed(seed)
+
+        m = X.shape[1]
+        mini_batches = []
+
+        # Shuffle (X, Y)
+        permutation = list(np.random.permutation(m))
+        shuffled_X = X[:, permutation]
+        shuffled_Y = Y[:, permutation].reshape((1,m))
+
+        # Partition (shuffled_X, shuffled_Y)
+        num_complete_minibatches = math.floor(m / mini_batch_size)
+        for k in range(0, num_complete_minibatches):
+            mini_batch_X = shuffled_X[:, mini_batch_size*k : mini_batch_size*(k+1)]
+            mini_batch_Y = shuffled_Y[:, mini_batch_size*k : mini_batch_size*(k+1)]
+
+            mini_batch = (mini_batch_X, mini_batch_Y)
+            mini_batches.append(mini_batch)
+
+        if m % mini_batch_size != 0:
+            mini_batch_X = shuffled_X[:, num_complete_minibatches*mini_batch_size:]
+            mini_batch_Y = shuffled_Y[:, num_complete_minibatches*mini_batch_size:]
+
+            mini_batch = (mini_batch_X, mini_batch_Y)
+            mini_batches.append(mini_batch)
+
+        return mini_batches
 
     def forwardPropagation(self, X):
         caches = list()
@@ -86,25 +115,34 @@ class DNNFS:
             db = self.__grads["db" + str(l+1)]
             self.__layers[l].updateLayerWeights(learning_rate, dW, db)
 
-    def train(self, X, Y, learning_rate, num_iterations=2000, normalize_inputs=True, lamb=0.1, print_cost_interval=100, print_cost=True):
+    def train(self, X, Y, learning_rate, num_epochs=2000, mini_batch_size=64, 
+              normalize_inputs=True, lamb=0.1, print_cost_interval=100, print_cost=True):
 
         if normalize_inputs:
             X = self.normalizeInputs(X)
 
+        seed = 10
         costs = []
-        for i in range(0, num_iterations):
-            AL, caches, weights = self.forwardPropagation(X)
-            grads = self.backwardPropagation(AL, Y, caches, lamb)
-            self.updateWeights(learning_rate)
+        for i in range(num_epochs):
 
-            if i % print_cost_interval == 0 or i == num_iterations-1:
+            seed = seed + 1
+            minibatches = self.randomizeMiniBatches(X, Y, mini_batch_size, seed)
+            cost_total = 0
+
+            for minibatch in minibatches:
+                (minibatch_X, minibatch_Y) = minibatch
+                AL, caches, weights = self.forwardPropagation(minibatch_X)
+                grads = self.backwardPropagation(AL, minibatch_Y, caches, lamb)
+                self.updateWeights(learning_rate)
                 if lamb != 0:
-                    cost = binary_cross_entropy_with_regularization(AL, Y, weights, lamb)
+                    minibatch_cost = binary_cross_entropy_with_regularization(AL, minibatch_Y, weights, lamb)
                 else:
-                    cost = binary_cross_entropy(AL, Y)
-                costs.append(cost)
+                    minibatch_cost = binary_cross_entropy(AL, minibatch_Y)
+                cost_total += minibatch_cost
+
+            if i % print_cost_interval == 0 or i == num_epochs-1:
+                costs.append(cost_total)
                 if print_cost:
-                    print("Cost after iteration {}: {}".format(i, np.squeeze(cost)))
-                    
+                    print("Cost after iteration {}: {}".format(i, np.squeeze(cost_total)))
         
         return costs
