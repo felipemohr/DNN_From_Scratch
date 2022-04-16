@@ -2,6 +2,7 @@ import math
 import numpy as np
 from dnn_utils.layers import *  
 from dnn_utils.activations import *
+from dnn_utils.optimizers import *
 from dnn_utils.cost import *
 
 class DNNFS:
@@ -116,10 +117,15 @@ class DNNFS:
             self.__layers[l].updateLayerWeights(learning_rate, dW, db)
 
     def train(self, X, Y, learning_rate, num_epochs=2000, mini_batch_size=64, 
-              normalize_inputs=True, lamb=0.1, print_cost_interval=100, print_cost=True):
+              optimizer="momentum", normalize_inputs=True, lamb=0.1,
+              print_cost_interval=100, print_cost=True):
 
         if normalize_inputs:
             X = self.normalizeInputs(X)
+
+        if optimizer == "momentum":
+            optimizer = Momentum(self.__layers, beta=0.9)
+            optimizer.initializeOptimizerParameters()
 
         seed = 10
         costs = []
@@ -133,7 +139,10 @@ class DNNFS:
                 (minibatch_X, minibatch_Y) = minibatch
                 AL, caches, weights = self.forwardPropagation(minibatch_X)
                 grads = self.backwardPropagation(AL, minibatch_Y, caches, lamb)
-                self.updateWeights(learning_rate)
+                if optimizer == "momentum":
+                    optimizer.updateParametersWithOptimizer(learning_rate, grads)
+                else:
+                    self.updateWeights(learning_rate)
                 if lamb != 0:
                     minibatch_cost = binary_cross_entropy_with_regularization(AL, minibatch_Y, weights, lamb)
                 else:

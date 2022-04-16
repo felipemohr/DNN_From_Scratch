@@ -52,10 +52,12 @@ class Layer():
 
         return dA_prev, dW, db
 
-
     def updateLayerWeights(self, learning_rate, dW, db):
         self.W = self.W - learning_rate*dW
         self.b = self.b - learning_rate*db
+
+    def getWeights(self):
+        return self.W, self.b
 
 
 class Dense(Layer):
