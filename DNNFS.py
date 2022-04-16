@@ -119,6 +119,26 @@ class DNNFS:
             db = self.__grads["db" + str(l+1)]
             self.__layers[l].updateLayerWeights(learning_rate, dW, db)
 
+    def predict(self, X):
+        A = X
+        for layer in self.__layers:
+            A, _ = layer.linearActivationForward(A)
+        Y_hat = A
+
+        predictions = Y_hat >= 0.5
+        return predictions
+
+    def getModelMetrics(self, X_train, Y_train, X_test, Y_test):
+        train_predictions = self.predict(X_train)
+        test_predictions = self.predict(X_test)
+
+        train_accuracy = 1 - np.mean(Y_train - train_predictions)
+        test_accuracy = 1 - np.mean(Y_test - test_predictions)
+
+        metrics = {"train_accuracy": train_accuracy,
+                   "test_accuracy": test_accuracy}
+        return metrics
+
     def train(self, X, Y, learning_rate, num_epochs=2000, mini_batch_size=64, 
               optimizer=None, normalize_inputs=True, lamb=0.1, decay_rate=0.0, 
               print_cost_interval=100, print_cost=True):
